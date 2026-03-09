@@ -1,0 +1,41 @@
+from fastapi import FastAPI
+import time
+from app.logging_config import get_logger
+from app.services.cart_service import get_cart
+from app.services.feature_flag_service import is_checkout_enabled
+from app.services.template_engine import render_cart
+
+app = FastAPI()
+logger = get_logger("web-app")
+
+
+@app.get("/cart.html")
+async def cart_page(user_id: str = "U10293"):
+    start_time = time.time()
+
+    logger.info("Incoming request GET /cart.html")
+
+    cart = await get_cart(user_id)
+
+    try:
+        checkout_enabled = await is_checkout_enabled(user_id)
+    except Exception:
+        logger.warning(
+            "Feature flag ENABLE_CHECKOUT_BUTTON defaulted to false due to service failure"
+        )
+        checkout_enabled = False
+
+    if not checkout_enabled:
+        logger.warning(
+            "Checkout button will not be rendered for this session"
+        )
+
+    response = render_cart(cart, checkout_enabled)
+
+    duration_ms = int((time.time() - start_time) * 1000)
+
+    logger.info(
+        f"Response completed GET /cart.html status=200 duration_ms={duration_ms}"
+    )
+
+    return response
