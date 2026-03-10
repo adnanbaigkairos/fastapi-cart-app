@@ -11,6 +11,10 @@ class JsonFormatter(logging.Formatter):
             "message": record.getMessage(),
             "time": datetime.utcnow().isoformat()
         }
+        
+        if hasattr(record, "metadata") and record.metadata:
+            log_record["metadata"] = record.metadata
+        
         return json.dumps(log_record)
 
 

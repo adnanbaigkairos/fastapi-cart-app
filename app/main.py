@@ -1,9 +1,11 @@
 from fastapi import FastAPI
 import time
+import asyncio
 from app.logging_config import get_logger
 from app.services.cart_service import get_cart
 from app.services.feature_flag_service import is_checkout_enabled
 from app.services.template_engine import render_cart
+from app.services.test_runner_simulator import simulate_test_execution
 
 app = FastAPI()
 logger = get_logger("web-app")
@@ -37,3 +39,8 @@ async def cart_page(user_id: str = "U10293"):
     )
 
     return response
+
+
+@app.get("/simulate-test")
+async def simulate_saucedemo_test():
+    return await simulate_test_execution()
