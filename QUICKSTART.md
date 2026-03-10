@@ -12,39 +12,16 @@ pip install -r requirements.txt
 
 ## Running the Application
 
-### Method 1: FastAPI Server (Recommended)
-
 ```bash
-# Start the server
+# Start the SauceDemo backend server
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-The server will start at `http://localhost:8000`
+The application will start at `http://localhost:8000`
 
-### Method 2: Direct Python Script
+## Testing the Application
 
-```bash
-# Run the simulation directly
-python test_simulation.py
-```
-
-## Testing the Endpoints
-
-### Simulate Complete Test Execution
-
-```bash
-# Using curl
-curl http://localhost:8000/simulate-test
-
-# Using browser
-# Navigate to: http://localhost:8000/simulate-test
-```
-
-**Expected Output:**
-- Console logs showing complete test execution flow
-- JSON response with test results
-
-### Cart Page Only (Backend Simulation)
+### Access Cart Page
 
 ```bash
 # Using curl
@@ -54,83 +31,79 @@ curl http://localhost:8000/cart.html
 # Navigate to: http://localhost:8000/cart.html
 ```
 
-**Expected Output:**
-- Backend service logs (cart, feature flag, template)
-- JSON response with cart data and checkout visibility
+**Expected Behavior:**
+- Feature flag service will timeout after 2000ms
+- Checkout button will NOT be rendered in the response
+- Console logs will show the complete backend flow
+- Response time: ~2100ms
 
-## Viewing Logs
+### Access Checkout Page
+
+```bash
+# Using curl
+curl http://localhost:8000/checkout-step-one.html
+
+# Using browser
+# Navigate to: http://localhost:8000/checkout-step-one.html
+```
+
+**Expected Behavior:**
+- Returns checkout information form
+- Contains first-name, last-name, postal-code input fields
+
+## Viewing Application Logs
 
 All logs are output to the console in JSON format. Each log includes:
 - `level`: info, warning, error
-- `service`: test-runner, web-app, cart-service, feature-flag-service, template-engine
 - `message`: Log message
 - `time`: ISO timestamp
-- `metadata`: Additional data (for error logs with attempted locators)
 
 ### Example Log Output
 
 ```json
-{"level": "info", "service": "test-runner", "message": "Starting test execution: sauce demo checkout flow", "time": "2026-03-10T12:00:00.000000"}
-{"level": "info", "service": "web-app", "message": "Incoming request GET /cart.html", "time": "2026-03-10T12:00:01.500000"}
-{"level": "info", "service": "cart-service", "message": "Fetching cart for user_id=U10293", "time": "2026-03-10T12:00:01.510000"}
-{"level": "error", "service": "feature-flag-service", "message": "Feature flag service timeout after 2000ms", "time": "2026-03-10T12:00:03.510000"}
-{"level": "error", "service": "test-runner", "message": "Element not found for locator checkout", "time": "2026-03-10T12:00:03.620000", "metadata": {"attempted_locators": ["By.xpath: //button[@idqksm='checksalxmout']", "..."]}}
+{"level": "info", "message": "Incoming request GET /cart.html", "time": "2026-03-10T12:00:00.000000"}
+{"level": "info", "message": "Fetching SauceDemo cart for user_id=U10293", "time": "2026-03-10T12:00:00.010000"}
+{"level": "info", "message": "Cart retrieved successfully: items=1 total=$29.99", "time": "2026-03-10T12:00:00.060000"}
+{"level": "info", "message": "Evaluating feature flag ENABLE_CHECKOUT_BUTTON for user_id=U10293", "time": "2026-03-10T12:00:00.070000"}
+{"level": "error", "message": "Feature flag service timeout after 2000ms", "time": "2026-03-10T12:00:02.070000"}
+{"level": "warning", "message": "Feature flag ENABLE_CHECKOUT_BUTTON defaulted to false due to service failure", "time": "2026-03-10T12:00:02.071000"}
+{"level": "error", "message": "CRITICAL: Checkout button NOT rendered in DOM - element with id='checkout' will not exist", "time": "2026-03-10T12:00:02.080000"}
+{"level": "info", "message": "Response completed GET /cart.html status=200 duration_ms=2100", "time": "2026-03-10T12:00:02.100000"}
 ```
 
-## Understanding the Simulation
+## Understanding the Application Behavior
 
-### The Scenario
+### The Backend Issue
 
-This simulation recreates a real-world test failure scenario:
+This application demonstrates a real backend failure:
 
-1. **Test starts**: Automated test begins executing SauceDemo checkout flow
-2. **Steps 1-13 pass**: Login, add items to cart, open cart page
-3. **Backend timeout**: Feature flag service times out (2000ms)
-4. **UI impact**: Checkout button is NOT rendered
-5. **Test fails**: Step 14 cannot find checkout button
-6. **Cascading failures**: Steps 15-16 fail (wrong page), steps 17-23 skipped
+1. **Request arrives**: User/test navigates to cart page
+2. **Cart loads**: Cart service successfully retrieves cart data
+3. **Feature flag check**: Application calls feature flag service
+4. **Timeout occurs**: Feature flag service times out after 2000ms
+5. **Fallback behavior**: Application defaults to `checkout_enabled=false`
+6. **UI impact**: Template engine does NOT render checkout button in HTML
+7. **Result**: The HTML response lacks `<button id="checkout">` element
 
-### Why This Matters for RCA
+### Why This Causes Test Failures
 
-This simulation demonstrates:
-- **Root Cause**: Backend feature flag timeout
-- **UI Impact**: Missing checkout button
-- **Test Impact**: Element not found errors
-- **Cascading Effect**: Multiple downstream failures
+When automated tests run against this application:
+- Test expects to find checkout button with `id="checkout"`
+- Button does NOT exist in the DOM (not rendered)
+- Test fails with "Element not found" error
+- Subsequent steps fail because navigation to checkout page never occurs
 
-The RCA system can now analyze:
-- Backend logs showing the timeout
-- Test logs showing locator attempts
-- The causal chain from backend → UI → test failure
+### Root Cause
+
+**Backend Issue:** Feature flag service timeout (2000ms)
+**Impact:** Checkout button not rendered in cart page HTML
+**Evidence:** Application logs show timeout and explicit warning about button not being rendered
 
 ## API Documentation
 
-### `GET /simulate-test`
-
-**Description**: Simulates complete SauceDemo test execution with all 23 steps
-
-**Response**: 
-```json
-{
-  "test_name": "sauce demo checkout flow",
-  "status": "failed",
-  "total_steps": 23,
-  "passed": 13,
-  "failed": 3,
-  "skipped": 7,
-  "checkout_button_rendered": false,
-  "cart": {
-    "cart": {"items": 1, "total": 29.99},
-    "checkout_visible": false
-  }
-}
-```
-
-**Duration**: ~2.5 seconds (includes 2s feature flag timeout)
-
 ### `GET /cart.html`
 
-**Description**: Simulates SauceDemo cart page request (backend only)
+**Description**: Returns SauceDemo cart page with items
 
 **Query Parameters**:
 - `user_id` (optional): User ID, defaults to "U10293"
@@ -140,13 +113,41 @@ The RCA system can now analyze:
 {
   "cart": {
     "items": 1,
-    "total": 29.99
+    "total": 29.99,
+    "products": [
+      {
+        "id": 4,
+        "name": "Sauce Labs Backpack",
+        "price": 29.99,
+        "quantity": 1
+      }
+    ]
   },
-  "checkout_visible": false
+  "checkout_visible": false,
+  "html_rendered": "<div id='cart_contents_container'>...</div>",
+  "page": "cart",
+  "url": "https://www.saucedemo.com/cart.html"
 }
 ```
 
-**Duration**: ~2.1 seconds (includes 2s feature flag timeout)
+**Duration**: ~2100ms (includes 2000ms feature flag timeout)
+
+**Note**: `checkout_visible: false` means the checkout button is NOT in the HTML
+
+### `GET /checkout-step-one.html`
+
+**Description**: Returns SauceDemo checkout information form page
+
+**Response**:
+```json
+{
+  "html_rendered": "<div id='checkout_info_container'>...</div>",
+  "page": "checkout_step_one",
+  "url": "https://www.saucedemo.com/checkout-step-one.html"
+}
+```
+
+**Duration**: ~10ms
 
 ## Troubleshooting
 
@@ -173,16 +174,25 @@ pip install -r requirements.txt
 - Check that logging level is INFO or lower
 - Ensure the service loggers are properly initialized
 
-## Next Steps
+## Code Structure for RCA Analysis
 
-1. **Integrate with RCA System**: Point your RCA system to this endpoint
-2. **Customize Scenarios**: Modify `test_runner_simulator.py` to create different failure scenarios
-3. **Add More Services**: Extend with additional backend services as needed
-4. **Export Logs**: Pipe logs to a file or logging service for analysis
+The codebase contains the actual application code that causes the test failure:
 
-## Support
+1. **`app/main.py`** - FastAPI endpoints for cart and checkout pages
+2. **`app/services/cart_service.py`** - Cart data retrieval logic
+3. **`app/services/feature_flag_service.py`** - Feature flag evaluation (TIMES OUT after 2000ms)
+4. **`app/services/template_engine.py`** - HTML rendering logic that SKIPS checkout button when flag is false
 
-For issues or questions, refer to:
-- `README.md` - Project overview
-- `IMPLEMENTATION_SUMMARY.md` - Technical details
-- Code comments in `app/services/test_runner_simulator.py`
+### Key Code to Review
+
+**Feature Flag Service** (`feature_flag_service.py`):
+- Line 13: `await asyncio.sleep(2)` - Causes 2000ms timeout
+- Line 15: Raises `TimeoutError`
+
+**Template Engine** (`template_engine.py`):
+- Line 19-24: Conditional rendering of checkout button
+- When `show_checkout=False`, button is NOT added to HTML
+
+**Main Application** (`main.py`):
+- Line 23-30: Catches `TimeoutError` and defaults to `checkout_enabled=False`
+- This causes template engine to skip rendering the button

@@ -7,14 +7,9 @@ class JsonFormatter(logging.Formatter):
     def format(self, record):
         log_record = {
             "level": record.levelname.lower(),
-            "service": getattr(record, "service", "web-app"),
             "message": record.getMessage(),
             "time": datetime.utcnow().isoformat()
         }
-        
-        if hasattr(record, "metadata") and record.metadata:
-            log_record["metadata"] = record.metadata
-        
         return json.dumps(log_record)
 
 
@@ -28,11 +23,5 @@ def get_logger(service_name: str):
 
     if not logger.handlers:
         logger.addHandler(handler)
-
-    def inject_service(record):
-        record.service = service_name
-        return True
-
-    logger.addFilter(inject_service)
 
     return logger
