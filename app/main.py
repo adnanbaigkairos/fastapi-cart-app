@@ -19,16 +19,14 @@ async def cart_page(user_id: str = "U10293"):
 
     try:
         checkout_enabled = await is_checkout_enabled(user_id)
-    except Exception:
+    except TimeoutError:
         logger.warning(
             "Feature flag ENABLE_CHECKOUT_BUTTON defaulted to false due to service failure"
         )
-        checkout_enabled = False
-
-    if not checkout_enabled:
         logger.warning(
             "Checkout button will not be rendered for this session"
         )
+        checkout_enabled = False
 
     response = render_cart(cart, checkout_enabled)
 
