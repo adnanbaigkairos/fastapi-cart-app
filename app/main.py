@@ -4,7 +4,7 @@ import asyncio
 from app.logging_config import get_logger
 from app.services.cart_service import get_cart
 from app.services.feature_flag_service import is_checkout_enabled
-from app.services.template_engine import render_cart
+from app.services.template_engine import render_cart, render_checkout_step_one
 from app.services.test_runner_simulator import simulate_test_execution
 
 app = FastAPI()
@@ -44,3 +44,15 @@ async def cart_page(user_id: str = "U10293"):
 @app.get("/simulate-test")
 async def simulate_saucedemo_test():
     return await simulate_test_execution()
+
+
+@app.get("/checkout-step-one.html")
+async def checkout_step_one_page():
+    logger.info("Incoming request GET /checkout-step-one.html")
+    logger.warning("This page should only be accessible after successful checkout button click")
+    
+    response = render_checkout_step_one()
+    
+    logger.info("Response completed GET /checkout-step-one.html status=200")
+    
+    return response
