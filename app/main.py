@@ -215,4 +215,29 @@ async def init_checkout(request: Request):                                      
         await release_lock(cart_id, user_id)                                       # line 211 — pool conn #5 during failure (worsens pool pressure)
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/api/v1/health/")
+async def webhook_test():
+    """
+    Test endpoint to trigger health checks and verify the service is running. 
+    Not part of core checkout flow.
+    """
+    return {
+        "status": "ok",
+        "message": "Health check endpoint added",
+        "version": "v1"
+    }
+
+@router.get("/api/v2/health/")
+async def webhook_test():
+    """
+    Test endpoint to trigger health checks and verify the service is running. 
+    Not part of core checkout flow.
+    """
+    return {
+        "status": "ok",
+        "message": "Health check endpoint added",
+        "version": "v2"
+    }
+
+
 app.include_router(router)
