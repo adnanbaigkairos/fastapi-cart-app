@@ -227,4 +227,17 @@ async def webhook_test():
         "version": "v1"
     }
 
+@router.get("/api/v2/health/")
+async def webhook_test():
+    """
+    Test endpoint to trigger health checks and verify the service is running. 
+    Not part of core checkout flow.
+    """
+    return {
+        "status": "ok",
+        "message": "Health check endpoint added",
+        "version": "v2"
+    }
+
+
 app.include_router(router)
